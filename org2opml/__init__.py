@@ -24,33 +24,41 @@ def _apply_heading(xml_node: ET.Element, heading: str):
     xml_node.attrib["text"] = heading
 
 
-def _entire_body_is_list(body: str):
+def _is_entire_body_list(body: str):
     content = body.strip()
-    p = re.compile(r'\s*- ')
+    bullet_pattern = re.compile(r'\s*[-+]')
     for line in content.split("\n"):
         line = line.strip()
         if not line:
             continue
-        if not p.match(line):
+        if not bullet_pattern.match(line):
             return False
     return True
 
 
 def _append_body_list(xml_node: ET.Element, body: str):
-    content = body.strip()
-    p = re.compile(r'(\s*)- (\[.\] )?(.*)')
+    bullet_pattern = re.compile(r'(\s*)[-+]\s?(\[.\] )?(.*)')
 
     parents = {0: xml_node}
 
-    for line in content.split("\n"):
+    first_spaces_len = None
+
+    for line in body.split("\n"):
         line = line.rstrip()
         if not line:
             continue
-        parts = p.match(line)
+        parts = bullet_pattern.match(line)
         spaces = parts.group(1)
         todo = parts.group(2)
         body = parts.group(3)
-        level = len(spaces) / 2
+
+        if not body:
+            continue
+
+        if first_spaces_len is None:
+            first_spaces_len = len(spaces)
+
+        level = (len(spaces) - first_spaces_len) / 2
         complete = todo == '[X] '
 
         attribs = dict(text=body)
@@ -67,7 +75,7 @@ def _apply_body(xml_node: ET.Element, body: str):
     if not body:
         return
 
-    if _entire_body_is_list(body):
+    if _is_entire_body_list(body):
         _append_body_list(xml_node, body)
     else:
         xml_node.attrib["_note"] = body
