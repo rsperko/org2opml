@@ -1,3 +1,4 @@
+import re
 import xml.etree.ElementTree as ET
 import argparse
 from typing import Set
@@ -23,11 +24,53 @@ def _apply_heading(xml_node: ET.Element, heading: str):
     xml_node.attrib["text"] = heading
 
 
+def _entire_body_is_list(body: str):
+    content = body.strip()
+    p = re.compile(r'\s*- ')
+    for line in content.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        if not p.match(line):
+            return False
+    return True
+
+
+def _append_body_list(xml_node: ET.Element, body: str):
+    content = body.strip()
+    p = re.compile(r'(\s*)- (\[.\] )?(.*)')
+
+    parents = {0: xml_node}
+
+    for line in content.split("\n"):
+        line = line.rstrip()
+        if not line:
+            continue
+        parts = p.match(line)
+        spaces = parts.group(1)
+        todo = parts.group(2)
+        body = parts.group(3)
+        level = len(spaces) / 2
+        complete = todo == '[X] '
+
+        attribs = dict(text=body)
+        if todo:
+            attribs["checkbox"] = "true"
+            if complete:
+                attribs["complete"] = "true"
+
+        list_node = ET.SubElement(parents[level], "outline", attrib=attribs)
+        parents[level+1] = list_node
+
+
 def _apply_body(xml_node: ET.Element, body: str):
     if not body:
         return
 
-    xml_node.attrib["_note"] = body
+    if _entire_body_is_list(body):
+        _append_body_list(xml_node, body)
+    else:
+        xml_node.attrib["_note"] = body
 
 
 def _append_tags(xml_node: ET.Element, tags: Set[str]):
