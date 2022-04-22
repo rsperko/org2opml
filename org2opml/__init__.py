@@ -47,6 +47,12 @@ def _apply_todo(xml_node, todo):
             xml_node.attrib["complete"] = "true"
 
 
+def _apply_priority(xml_node, priority):
+    if priority:
+        text = xml_node.attrib.get("text", "") + f" #{priority}"
+        xml_node.attrib["text"] = text
+
+
 def _add_node(parent: ET.Element, org_node: OrgNode):
     if not org_node.heading and not org_node.children:
         return
@@ -57,6 +63,7 @@ def _add_node(parent: ET.Element, org_node: OrgNode):
     _apply_todo(xml_node, org_node.todo)
     _apply_body(xml_node, org_node.body)
     _append_tags(xml_node, org_node.tags)
+    _apply_priority(xml_node, org_node.priority)
 
     for child_node in org_node.children:
         _add_node(xml_node, child_node)
